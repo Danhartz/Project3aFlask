@@ -1,35 +1,70 @@
 #import modules
-from flask import Flask, render_template, request, flash, url_for, redirect
-import mysql.connector
-from mysql.connector import errorcode
+from flask import Flask, render_template, request
+import csv
+from datetime import datetime
 
-#create a flask app object and set app variables
+from stock_logic import (
+    fetch_time_series,
+    filter_series_by_date,
+    generate_chart,
+)
+
 app = Flask(__name__)
-app.config["DEBUG"] = True
-app.config["SECRET_KEY"] = 'your secret key'
-app.secret_key = 'your secret key'
 
-#create a connection object to the hr database
-def get_db_connection():
-    try:
-        mydb = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="root",
-            port=6603,
-            database="classicmodels"
-        )
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Something is wrong with your username or password.")
-            exit()
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Database does not exist.")
-            exit()
-        else:
-            print(err)
-            print("ERROR: Service not available")
-            exit()
 
-    return mydb
+def load_stock_symbols(csv_path="stocks.csv"):
+    """
+    Load stock symbols from your CSV.
+    CSV columns (from your file): Symbol, Name, Sector
+    """
+    symbols = []
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            symbols.append({
+                "symbol": row["Symbol"],
+                "name": row["Name"],
+                "sector": row["Sector"],
+            })
+    return symbols
 
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    symbols = load_stock_symbols()
+    chart_file = None
+    error = None
+
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        chart_type = request.form.get("chart_type")          
+        time_series_function = request.form.get("time_series")  
+        begin_date = request.form.get("begin_date")
+        end_date = request.form.get("end_date")
+
+        try:
+            # Basic validation like your ask_date / ask_end_date
+            datetime.strptime(begin_date, "%Y-%m-%d")
+            datetime.strptime(end_date, "%Y-%m-%d")
+            if end_date < begin_date:
+                raise ValueError("End date cannot be before the beginning date.")
+
+            ts = fetch_time_series(symbol, time_series_function)
+            dates, closes = filter_series_by_date(ts, begin_date, end_date)
+            chart_file = generate_chart(
+                symbol, dates, closes, chart_type, begin_date, end_date
+            )
+
+        except Exception as e:
+            error = str(e)
+
+    return render_template(
+        "index.html",
+        symbols=symbols,
+        chart_file=chart_file,
+        error=error,
+    )
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Stock Viewer</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+<body class="p-4">
+<div class="container">
+    <h1 class="mb-4">Stock Viewer</h1>
+
+    {% if error %}
+    <div class="alert alert-danger">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" class="mb-4">
+        <!-- Stock symbol dropdown -->
+        <div class="mb-3">
+            <label class="form-label" for="symbol">Stock Symbol</label>
+            <select id="symbol" name="symbol" class="form-select" required>
+                <option value="" disabled selected>Select a stock...</option>
+                {% for s in symbols %}
+                    <option value="{{ s.symbol }}">
+                        {{ s.symbol }} — {{ s.name }} ({{ s.sector }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Chart type -->
+        <div class="mb-3">
+            <label class="form-label" for="chart_type">Chart Type</label>
+            <select id="chart_type" name="chart_type" class="form-select" required>
+                <option value="line">Line</option>
+                <option value="bar">Bar</option>
+            </select>
+        </div>
+
+        <!-- Time series function -->
+        <div class="mb-3">
+            <label class="form-label" for="time_series">Time Series Function</label>
+            <select id="time_series" name="time_series" class="form-select" required>
+                <option value="TIME_SERIES_DAILY">TIME_SERIES_DAILY</option>
+                <option value="TIME_SERIES_WEEKLY">TIME_SERIES_WEEKLY</option>
+                <option value="TIME_SERIES_MONTHLY">TIME_SERIES_MONTHLY</option>
+            </select>
+        </div>
+
+        <!-- Date range -->
+        <div class="mb-3">
+            <label class="form-label">Date Range</label>
+            <div class="d-flex gap-2">
+                <input type="date" name="begin_date" class="form-control" required>
+                <input type="date" name="end_date" class="form-control" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Generate Chart</button>
+    </form>
+
+    {% if chart_file %}
+    <h2>Chart</h2>
+    <img src="{{ url_for('static', filename=chart_file) }}"
+         class="img-fluid"
+         alt="Stock chart">
+    {% endif %}
+</div>
+</body>
+</html>
